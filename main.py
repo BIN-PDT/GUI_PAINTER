@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from settings import *
 from canvas import Canvas
+from tool import ToolPanel
 
 
 class App(ctk.CTk):
@@ -16,6 +17,13 @@ class App(ctk.CTk):
         self.brush = ctk.DoubleVar(value="0.2")
         # WIDGET.
         Canvas(self, self.color, self.brush)
+        ToolPanel(self, self.color, self.brush)
+        # EVENT.
+        self.bind("<MouseWheel>", self.resize_brush)
+
+    def resize_brush(self, event):
+        size = self.brush.get() + 0.05 * int(event.delta / abs(event.delta))
+        self.brush.set(max(0.2, min(1, size)))
 
 
 if __name__ == "__main__":
