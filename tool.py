@@ -31,6 +31,7 @@ class ToolPanel(ctk.CTkToplevel):
         BrushButton(self, self.binding_erase)
         EraseButton(self, self.binding_erase)
         ClearButton(self, self.binding_erase, clear_canvas)
+        BrushPreview(self, self.binding_color, self.binding_brush, self.binding_erase)
         # SET DEFAULT CHOICE.
         self.binding_erase.set(False)
 
@@ -198,3 +199,51 @@ class ClearButton(Button):
     def activate(self):
         self.binding_erase.set(False)
         self.clear_canvas()
+
+
+class BrushPreview(ctk.CTkCanvas):
+    def __init__(self, parent, binding_color, binding_brush, binding_erase):
+        super().__init__(
+            master=parent,
+            background=BRUSH_PREVIEW_BG,
+            bd=0,
+            highlightthickness=0,
+            relief=ctk.RIDGE,
+        )
+        self.grid(row=0, column=1, columnspan=2, sticky=ctk.NSEW, padx=15, pady=6)
+        # DATA.
+        self.binding_color = binding_color
+        self.binding_brush = binding_brush
+        self.binding_erase = binding_erase
+        self.CENTER_X = self.CENTER_Y = self.MAX_RADIUS = 0
+        # EVENT.
+        self.bind("<Configure>", self.load_data)
+        self.binding_color.trace_add("write", self.preview)
+        self.binding_brush.trace_add("write", self.preview)
+        self.binding_erase.trace_add("write", self.preview)
+
+    def load_data(self, event):
+        self.CENTER_X, self.CENTER_Y = event.width / 2, event.height / 2
+        self.MAX_RADIUS = (event.height / 2) * 0.8
+        self.preview()
+
+    def preview(self, *args):
+        # DISCARD BEFORE DRAWING.
+        self.delete(ctk.ALL)
+        # DRAW NEW PREVIEW.
+        radius = self.binding_brush.get() * self.MAX_RADIUS
+        color = (
+            BRUSH_PREVIEW_BG
+            if self.binding_erase.get()
+            else f"#{self.binding_color.get()}"
+        )
+        outline = "#000" if self.binding_erase.get() else color
+        self.create_oval(
+            self.CENTER_X - radius,
+            self.CENTER_Y - radius,
+            self.CENTER_X + radius,
+            self.CENTER_Y + radius,
+            fill=color,
+            outline=outline,
+            dash=20,
+        )
