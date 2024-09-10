@@ -38,4 +38,5 @@ class Canvas(ctk.CTkCanvas):
 
     def line(self, src, des):
         width = self.binding_brush.get() * BRUSH_RATIO
-        self.create_line(src, des, width=width, capstyle=ctk.ROUND, fill="black")
+        color = f"#{self.binding_color.get()}"
+        self.create_line(src, des, width=width, capstyle=ctk.ROUND, fill=color)
