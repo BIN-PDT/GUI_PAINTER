@@ -1,9 +1,12 @@
 import customtkinter as ctk
+from PIL import Image
 from settings import *
 
 
 class ToolPanel(ctk.CTkToplevel):
-    def __init__(self, parent, binding_color, binding_brush):
+    def __init__(
+        self, parent, binding_color, binding_brush, binding_erase, clear_canvas
+    ):
         super().__init__(fg_color="white")
         # SETUP.
         self.geometry("250x300")
@@ -20,10 +23,16 @@ class ToolPanel(ctk.CTkToplevel):
         # DATA.
         self.binding_color = binding_color
         self.binding_brush = binding_brush
+        self.binding_erase = binding_erase
         # WIDGETS.
         BrushSizeSlider(self, self.binding_brush)
-        ColorPanel(self, self.binding_color)
-        ColorSliderPanel(self, self.binding_color)
+        ColorPanel(self, self.binding_color, self.binding_erase)
+        ColorSliderPanel(self, self.binding_color, self.binding_erase)
+        BrushButton(self, self.binding_erase)
+        EraseButton(self, self.binding_erase)
+        ClearButton(self, self.binding_erase, clear_canvas)
+        # SET DEFAULT CHOICE.
+        self.binding_erase.set(False)
 
 
 class BrushSizeSlider(ctk.CTkFrame):
@@ -37,7 +46,7 @@ class BrushSizeSlider(ctk.CTkFrame):
 
 
 class ColorPanel(ctk.CTkFrame):
-    def __init__(self, parent, binding_color):
+    def __init__(self, parent, binding_color, binding_erase):
         super().__init__(master=parent, fg_color="transparent")
         self.grid(row=1, column=0, columnspan=3, sticky=ctk.NSEW, padx=10, pady=5)
         # LAYOUT.
@@ -46,11 +55,12 @@ class ColorPanel(ctk.CTkFrame):
         # WIDGETS.
         for row in range(COLOR_ROWS):
             for col in range(COLOR_COLS):
-                ColorButton(self, row, col, COLORS[row][col], binding_color)
+                color = COLORS[row][col]
+                ColorButton(self, row, col, color, binding_color, binding_erase)
 
 
 class ColorButton(ctk.CTkButton):
-    def __init__(self, parent, row, column, color, binding_color):
+    def __init__(self, parent, row, column, color, binding_color, binding_erase):
         super().__init__(
             master=parent,
             text="",
@@ -63,19 +73,22 @@ class ColorButton(ctk.CTkButton):
         # DATA.
         self.original_color = color
         self.binding_color = binding_color
+        self.binding_erase = binding_erase
 
     def apply_color(self):
         self.binding_color.set(self.original_color)
+        self.binding_erase.set(False)
 
 
 class ColorSliderPanel(ctk.CTkFrame):
-    def __init__(self, parent, binding_color):
+    def __init__(self, parent, binding_color, binding_erase):
         super().__init__(master=parent)
         self.grid(row=0, column=0, sticky=ctk.NSEW, padx=10, pady=5)
         # LAYOUT.
         self.rowconfigure((0, 1, 2), weight=1, uniform="A")
         self.columnconfigure(0, weight=1, uniform="A")
         # DATA.
+        self.binding_erase = binding_erase
         self.color_RGB = binding_color
         self.color_R = ctk.IntVar(value=binding_color.get()[0])
         self.color_G = ctk.IntVar(value=binding_color.get()[1])
@@ -99,6 +112,7 @@ class ColorSliderPanel(ctk.CTkFrame):
         ).grid(row=row, column=column, padx=5, pady=5)
 
     def set_component_color(self, component, value):
+        self.binding_erase.set(False)
         color = list(self.color_RGB.get())
         match component:
             case "R":
@@ -114,3 +128,73 @@ class ColorSliderPanel(ctk.CTkFrame):
         self.color_R.set(COLOR_RANGE.index(color[0]))
         self.color_G.set(COLOR_RANGE.index(color[1]))
         self.color_B.set(COLOR_RANGE.index(color[2]))
+
+
+class Button(ctk.CTkButton):
+    def __init__(self, parent, column, image, command):
+        super().__init__(
+            master=parent,
+            fg_color=BUTTON_COLOR,
+            hover_color=BUTTON_HOVER_COLOR,
+            text="",
+            image=ctk.CTkImage(image, image),
+            command=command,
+        )
+        self.grid(row=3, column=column, sticky=ctk.NSEW, padx=10, pady=5)
+
+
+class BrushButton(Button):
+    def __init__(self, parent, binding_erase):
+        super().__init__(
+            parent=parent,
+            column=0,
+            image=Image.open("images/ui/brush.png"),
+            command=self.activate,
+        )
+        # DATA.
+        self.binding_erase = binding_erase
+        self.binding_erase.trace_add("write", self.update_state)
+
+    def activate(self):
+        self.binding_erase.set(False)
+
+    def update_state(self, *args):
+        color = BUTTON_COLOR if self.binding_erase.get() else BUTTON_ACTIVE_COLOR
+        self.configure(fg_color=color)
+
+
+class EraseButton(Button):
+    def __init__(self, parent, binding_erase):
+        super().__init__(
+            parent=parent,
+            column=1,
+            image=Image.open("images/ui/eraser.png"),
+            command=self.activate,
+        )
+        # DATA.
+        self.binding_erase = binding_erase
+        self.binding_erase.trace_add("write", self.update_state)
+
+    def activate(self):
+        self.binding_erase.set(True)
+
+    def update_state(self, *args):
+        color = BUTTON_ACTIVE_COLOR if self.binding_erase.get() else BUTTON_COLOR
+        self.configure(fg_color=color)
+
+
+class ClearButton(Button):
+    def __init__(self, parent, binding_erase, clear_canvas):
+        super().__init__(
+            parent=parent,
+            column=2,
+            image=Image.open("images/ui/clear.png"),
+            command=self.activate,
+        )
+        # DATA.
+        self.binding_erase = binding_erase
+        self.clear_canvas = clear_canvas
+
+    def activate(self):
+        self.binding_erase.set(False)
+        self.clear_canvas()

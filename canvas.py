@@ -3,7 +3,7 @@ from settings import *
 
 
 class Canvas(ctk.CTkCanvas):
-    def __init__(self, parent, binding_color, binding_brush):
+    def __init__(self, parent, binding_color, binding_brush, binding_erase):
         super().__init__(
             master=parent,
             background=CANVAS_BG,
@@ -15,6 +15,7 @@ class Canvas(ctk.CTkCanvas):
         # DATA.
         self.binding_color = binding_color
         self.binding_brush = binding_brush
+        self.binding_erase = binding_erase
         self.allow_draw = False
         self.old_x = self.old_y = None
         # EVENT.
@@ -38,5 +39,5 @@ class Canvas(ctk.CTkCanvas):
 
     def line(self, src, des):
         width = self.binding_brush.get() * BRUSH_RATIO
-        color = f"#{self.binding_color.get()}"
+        color = "#FFF" if self.binding_erase.get() else f"#{self.binding_color.get()}"
         self.create_line(src, des, width=width, capstyle=ctk.ROUND, fill=color)

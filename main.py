@@ -15,15 +15,19 @@ class App(ctk.CTk):
         # DATA.
         self.color = ctk.StringVar(value="000")
         self.brush = ctk.DoubleVar(value="0.2")
+        self.erase = ctk.BooleanVar()
         # WIDGET.
-        Canvas(self, self.color, self.brush)
-        ToolPanel(self, self.color, self.brush)
+        self.canvas = Canvas(self, self.color, self.brush, self.erase)
+        ToolPanel(self, self.color, self.brush, self.erase, self.clear_canvas)
         # EVENT.
         self.bind("<MouseWheel>", self.resize_brush)
 
     def resize_brush(self, event):
         size = self.brush.get() + 0.05 * int(event.delta / abs(event.delta))
         self.brush.set(max(0.2, min(1, size)))
+
+    def clear_canvas(self):
+        self.canvas.delete(ctk.ALL)
 
 
 if __name__ == "__main__":
