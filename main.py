@@ -11,8 +11,11 @@ class App(ctk.CTk):
         self.geometry("800x600")
         self.iconbitmap("images/empty.ico")
         self.title("")
+        # DATA.
+        self.color = ctk.StringVar(value="000")
+        self.brush = ctk.DoubleVar(value="0.2")
         # WIDGET.
-        Canvas(self)
+        Canvas(self, self.color, self.brush)
 
 
 if __name__ == "__main__":
