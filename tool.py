@@ -23,6 +23,7 @@ class ToolPanel(ctk.CTkToplevel):
         # WIDGETS.
         BrushSizeSlider(self, self.binding_brush)
         ColorPanel(self, self.binding_color)
+        ColorSliderPanel(self, self.binding_color)
 
 
 class BrushSizeSlider(ctk.CTkFrame):
@@ -65,3 +66,51 @@ class ColorButton(ctk.CTkButton):
 
     def apply_color(self):
         self.binding_color.set(self.original_color)
+
+
+class ColorSliderPanel(ctk.CTkFrame):
+    def __init__(self, parent, binding_color):
+        super().__init__(master=parent)
+        self.grid(row=0, column=0, sticky=ctk.NSEW, padx=10, pady=5)
+        # LAYOUT.
+        self.rowconfigure((0, 1, 2), weight=1, uniform="A")
+        self.columnconfigure(0, weight=1, uniform="A")
+        # DATA.
+        self.color_RGB = binding_color
+        self.color_R = ctk.IntVar(value=binding_color.get()[0])
+        self.color_G = ctk.IntVar(value=binding_color.get()[1])
+        self.color_B = ctk.IntVar(value=binding_color.get()[2])
+        self.color_RGB.trace_add("write", self.set_color)
+        # WIDGETS.
+        self.load_slider(0, 0, "R", SLIDER_R, self.color_R)
+        self.load_slider(1, 0, "G", SLIDER_G, self.color_G)
+        self.load_slider(2, 0, "B", SLIDER_B, self.color_B)
+
+    def load_slider(self, row, column, component, color, binding_data):
+        ctk.CTkSlider(
+            master=self,
+            button_color=color,
+            button_hover_color=color,
+            from_=0,
+            to=15,
+            number_of_steps=16,
+            variable=binding_data,
+            command=lambda value: self.set_component_color(component, value),
+        ).grid(row=row, column=column, padx=5, pady=5)
+
+    def set_component_color(self, component, value):
+        color = list(self.color_RGB.get())
+        match component:
+            case "R":
+                color[0] = COLOR_RANGE[int(value)]
+            case "G":
+                color[1] = COLOR_RANGE[int(value)]
+            case "B":
+                color[2] = COLOR_RANGE[int(value)]
+        self.color_RGB.set("".join(color))
+
+    def set_color(self, *args):
+        color = tuple(self.color_RGB.get())
+        self.color_R.set(COLOR_RANGE.index(color[0]))
+        self.color_G.set(COLOR_RANGE.index(color[1]))
+        self.color_B.set(COLOR_RANGE.index(color[2]))
