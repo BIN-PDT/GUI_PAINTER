@@ -9,7 +9,7 @@ class ToolPanel(ctk.CTkToplevel):
     ):
         super().__init__(fg_color="white")
         # SETUP.
-        self.geometry("250x300")
+        self.geometry("240x320")
         self.resizable(False, False)
         self.iconbitmap("images/empty.ico")
         self.attributes("-topmost", True)
@@ -20,67 +20,15 @@ class ToolPanel(ctk.CTkToplevel):
         self.rowconfigure(1, weight=3, uniform="A")
         self.rowconfigure((2, 3), weight=1, uniform="A")
         self.columnconfigure((0, 1, 2), weight=1, uniform="A")
-        # DATA.
-        self.binding_color = binding_color
-        self.binding_brush = binding_brush
-        self.binding_erase = binding_erase
         # WIDGETS.
-        BrushSizeSlider(self, self.binding_brush)
-        ColorPanel(self, self.binding_color, self.binding_erase)
-        ColorSliderPanel(self, self.binding_color, self.binding_erase)
-        BrushButton(self, self.binding_erase)
-        EraseButton(self, self.binding_erase)
-        ClearButton(self, self.binding_erase, clear_canvas)
-        BrushPreview(self, self.binding_color, self.binding_brush, self.binding_erase)
-        # SET DEFAULT CHOICE.
-        self.binding_erase.set(False)
+        ColorSliderPanel(self, binding_color, binding_erase)
+        BrushPreview(self, binding_color, binding_brush, binding_erase)
+        ColorPanel(self, binding_color, binding_erase)
+        BrushSizeSlider(self, binding_brush)
+        OptionPanel(self, binding_erase, clear_canvas)
 
 
-class BrushSizeSlider(ctk.CTkFrame):
-    def __init__(self, parent, binding_data):
-        super().__init__(master=parent)
-        self.grid(row=2, column=0, columnspan=3, sticky=ctk.NSEW, padx=10, pady=5)
-        # WIDGET.
-        ctk.CTkSlider(master=self, variable=binding_data, from_=0.2, to=1).pack(
-            expand=ctk.TRUE, fill=ctk.X, padx=5
-        )
-
-
-class ColorPanel(ctk.CTkFrame):
-    def __init__(self, parent, binding_color, binding_erase):
-        super().__init__(master=parent, fg_color="transparent")
-        self.grid(row=1, column=0, columnspan=3, sticky=ctk.NSEW, padx=10, pady=5)
-        # LAYOUT.
-        self.rowconfigure(tuple(range(COLOR_ROWS)), weight=1, uniform="A")
-        self.columnconfigure(tuple(range(COLOR_COLS)), weight=1, uniform="A")
-        # WIDGETS.
-        for row in range(COLOR_ROWS):
-            for col in range(COLOR_COLS):
-                color = COLORS[row][col]
-                ColorButton(self, row, col, color, binding_color, binding_erase)
-
-
-class ColorButton(ctk.CTkButton):
-    def __init__(self, parent, row, column, color, binding_color, binding_erase):
-        super().__init__(
-            master=parent,
-            text="",
-            corner_radius=3,
-            fg_color=f"#{color}",
-            hover_color=f"#{color}",
-            command=self.apply_color,
-        )
-        self.grid(row=row, column=column, sticky=ctk.NSEW, padx=1, pady=1)
-        # DATA.
-        self.original_color = color
-        self.binding_color = binding_color
-        self.binding_erase = binding_erase
-
-    def apply_color(self):
-        self.binding_color.set(self.original_color)
-        self.binding_erase.set(False)
-
-
+# SECTION 1.
 class ColorSliderPanel(ctk.CTkFrame):
     def __init__(self, parent, binding_color, binding_erase):
         super().__init__(master=parent)
@@ -131,17 +79,129 @@ class ColorSliderPanel(ctk.CTkFrame):
         self.color_B.set(COLOR_RANGE.index(color[2]))
 
 
+class BrushPreview(ctk.CTkCanvas):
+    def __init__(self, parent, binding_color, binding_brush, binding_erase):
+        super().__init__(
+            master=parent,
+            background=BRUSH_PREVIEW_BG,
+            bd=0,
+            highlightthickness=0,
+            relief=ctk.RIDGE,
+        )
+        self.grid(row=0, column=1, columnspan=2, sticky=ctk.NSEW, padx=15, pady=6)
+        # DATA.
+        self.binding_color = binding_color
+        self.binding_brush = binding_brush
+        self.binding_erase = binding_erase
+        self.CENTER_X = self.CENTER_Y = self.MAX_RADIUS = 0
+        # EVENT.
+        self.bind("<Configure>", self.load_data)
+        self.binding_color.trace_add("write", self.preview)
+        self.binding_brush.trace_add("write", self.preview)
+        self.binding_erase.trace_add("write", self.preview)
+
+    def load_data(self, event):
+        self.CENTER_X, self.CENTER_Y = event.width / 2, event.height / 2
+        self.MAX_RADIUS = (event.height / 2) * 0.8
+        self.preview()
+
+    def preview(self, *args):
+        # DISCARD BEFORE DRAWING.
+        self.delete(ctk.ALL)
+        # DRAW NEW PREVIEW.
+        radius = self.binding_brush.get() * self.MAX_RADIUS
+        color = (
+            BRUSH_PREVIEW_BG
+            if self.binding_erase.get()
+            else f"#{self.binding_color.get()}"
+        )
+        outline = "#000" if self.binding_erase.get() else color
+        self.create_oval(
+            self.CENTER_X - radius,
+            self.CENTER_Y - radius,
+            self.CENTER_X + radius,
+            self.CENTER_Y + radius,
+            fill=color,
+            outline=outline,
+            dash=20,
+        )
+
+
+# SECTION 2.
+class ColorPanel(ctk.CTkFrame):
+    def __init__(self, parent, binding_color, binding_erase):
+        super().__init__(master=parent, fg_color="transparent")
+        self.grid(row=1, column=0, columnspan=3, sticky=ctk.NSEW, padx=10, pady=5)
+        # LAYOUT.
+        self.rowconfigure(tuple(range(COLOR_ROWS)), weight=1, uniform="A")
+        self.columnconfigure(tuple(range(COLOR_COLS)), weight=1, uniform="A")
+        # WIDGETS.
+        for row in range(COLOR_ROWS):
+            for col in range(COLOR_COLS):
+                color = COLORS[row][col]
+                ColorButton(self, row, col, color, binding_color, binding_erase)
+
+
+class ColorButton(ctk.CTkButton):
+    def __init__(self, parent, row, column, color, binding_color, binding_erase):
+        super().__init__(
+            master=parent,
+            text="",
+            corner_radius=3,
+            fg_color=f"#{color}",
+            hover_color=f"#{color}",
+            command=self.apply_color,
+        )
+        self.grid(row=row, column=column, sticky=ctk.NSEW, padx=1, pady=1)
+        # DATA.
+        self.original_color = color
+        self.binding_color = binding_color
+        self.binding_erase = binding_erase
+
+    def apply_color(self):
+        self.binding_color.set(self.original_color)
+        self.binding_erase.set(False)
+
+
+# SECTION 3.
+class BrushSizeSlider(ctk.CTkFrame):
+    def __init__(self, parent, binding_data):
+        super().__init__(master=parent)
+        self.grid(row=2, column=0, columnspan=3, sticky=ctk.NSEW, padx=10, pady=5)
+        # WIDGET.
+        ctk.CTkSlider(master=self, variable=binding_data, from_=0.2, to=1).pack(
+            expand=ctk.TRUE, fill=ctk.X, padx=5
+        )
+
+
+# SECTION 4.
+class OptionPanel(ctk.CTkFrame):
+    def __init__(self, parent, binding_erase, clear_canvas):
+        super().__init__(master=parent, fg_color="transparent")
+        self.grid(row=3, column=0, columnspan=3, sticky=ctk.N, padx=5, pady=5)
+        # LAYOUT.
+        self.rowconfigure(0, weight=1, uniform="A")
+        self.columnconfigure((0, 1, 2), weight=1, uniform="A")
+        # WIDGETS.
+        BrushButton(self, binding_erase)
+        EraseButton(self, binding_erase)
+        ClearButton(self, binding_erase, clear_canvas)
+        # SET DEFAULT CHOICE.
+        binding_erase.set(False)
+
+
 class Button(ctk.CTkButton):
     def __init__(self, parent, column, image, command):
         super().__init__(
             master=parent,
+            height=32,
             fg_color=BUTTON_COLOR,
             hover_color=BUTTON_HOVER_COLOR,
             text="",
             image=ctk.CTkImage(image, image),
             command=command,
         )
-        self.grid(row=3, column=column, sticky=ctk.NSEW, padx=10, pady=5)
+        self.grid(row=3, column=column, sticky=ctk.NSEW, padx=5)
 
 
 class BrushButton(Button):
@@ -199,51 +259,3 @@ class ClearButton(Button):
     def activate(self):
         self.binding_erase.set(False)
         self.clear_canvas()
-
-
-class BrushPreview(ctk.CTkCanvas):
-    def __init__(self, parent, binding_color, binding_brush, binding_erase):
-        super().__init__(
-            master=parent,
-            background=BRUSH_PREVIEW_BG,
-            bd=0,
-            highlightthickness=0,
-            relief=ctk.RIDGE,
-        )
-        self.grid(row=0, column=1, columnspan=2, sticky=ctk.NSEW, padx=15, pady=6)
-        # DATA.
-        self.binding_color = binding_color
-        self.binding_brush = binding_brush
-        self.binding_erase = binding_erase
-        self.CENTER_X = self.CENTER_Y = self.MAX_RADIUS = 0
-        # EVENT.
-        self.bind("<Configure>", self.load_data)
-        self.binding_color.trace_add("write", self.preview)
-        self.binding_brush.trace_add("write", self.preview)
-        self.binding_erase.trace_add("write", self.preview)
-
-    def load_data(self, event):
-        self.CENTER_X, self.CENTER_Y = event.width / 2, event.height / 2
-        self.MAX_RADIUS = (event.height / 2) * 0.8
-        self.preview()
-
-    def preview(self, *args):
-        # DISCARD BEFORE DRAWING.
-        self.delete(ctk.ALL)
-        # DRAW NEW PREVIEW.
-        radius = self.binding_brush.get() * self.MAX_RADIUS
-        color = (
-            BRUSH_PREVIEW_BG
-            if self.binding_erase.get()
-            else f"#{self.binding_color.get()}"
-        )
-        outline = "#000" if self.binding_erase.get() else color
-        self.create_oval(
-            self.CENTER_X - radius,
-            self.CENTER_Y - radius,
-            self.CENTER_X + radius,
-            self.CENTER_Y + radius,
-            fill=color,
-            outline=outline,
-            dash=20,
-        )
